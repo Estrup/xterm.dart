@@ -179,9 +179,25 @@ class TerminalPainter {
 
     if (paragraph == null) {
       final cellFlags = cellData.flags;
+      final isBold = cellFlags & CellFlags.bold != 0;
+
+      // Bold-is-bright: when bold is set and the foreground is a named color
+      // in the 0-7 range, shift to the bright variant (8-15) and suppress the
+      // bold font weight.  This matches the default behavior of Ghostty and
+      // most native terminal emulators.
+      var boldConsumed = false;
+      var foreground = cellData.foreground;
+      if (isBold && cellFlags & CellFlags.inverse == 0) {
+        final colorType = foreground & CellColor.typeMask;
+        final colorValue = foreground & CellColor.valueMask;
+        if (colorType == CellColor.named && colorValue < 8) {
+          foreground = (colorValue + 8) | CellColor.named;
+          boldConsumed = true;
+        }
+      }
 
       var color = cellFlags & CellFlags.inverse == 0
-          ? resolveForegroundColor(cellData.foreground)
+          ? resolveForegroundColor(foreground)
           : resolveBackgroundColor(cellData.background);
 
       if (cellData.flags & CellFlags.faint != 0) {
@@ -190,7 +206,7 @@ class TerminalPainter {
 
       final style = _textStyle.toTextStyle(
         color: color,
-        bold: cellFlags & CellFlags.bold != 0,
+        bold: isBold && !boldConsumed,
         italic: cellFlags & CellFlags.italic != 0,
         underline: cellFlags & CellFlags.underline != 0,
       );

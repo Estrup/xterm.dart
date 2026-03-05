@@ -4,6 +4,8 @@ const _kDefaultFontSize = 13.0;
 
 const _kDefaultHeight = 1.2;
 
+const _kDefaultFontWeight = FontWeight.normal;
+
 const _kDefaultFontFamily = 'monospace';
 
 const _kDefaultFontFamilyFallback = [
@@ -27,6 +29,7 @@ class TerminalStyle {
   const TerminalStyle({
     this.fontSize = _kDefaultFontSize,
     this.height = _kDefaultHeight,
+    this.fontWeight = _kDefaultFontWeight,
     this.fontFamily = _kDefaultFontFamily,
     this.fontFamilyFallback = _kDefaultFontFamilyFallback,
   });
@@ -35,6 +38,7 @@ class TerminalStyle {
     return TerminalStyle(
       fontSize: textStyle.fontSize ?? _kDefaultFontSize,
       height: textStyle.height ?? _kDefaultHeight,
+      fontWeight: textStyle.fontWeight ?? _kDefaultFontWeight,
       fontFamily: textStyle.fontFamily ??
           textStyle.fontFamilyFallback?.first ??
           _kDefaultFontFamily,
@@ -46,6 +50,8 @@ class TerminalStyle {
   final double fontSize;
 
   final double height;
+
+  final FontWeight fontWeight;
 
   final String fontFamily;
 
@@ -65,7 +71,7 @@ class TerminalStyle {
       fontFamilyFallback: fontFamilyFallback,
       color: color,
       backgroundColor: backgroundColor,
-      fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+      fontWeight: bold ? FontWeight.bold : fontWeight,
       fontStyle: italic ? FontStyle.italic : FontStyle.normal,
       decoration: underline ? TextDecoration.underline : TextDecoration.none,
     );
@@ -74,12 +80,14 @@ class TerminalStyle {
   TerminalStyle copyWith({
     double? fontSize,
     double? height,
+    FontWeight? fontWeight,
     String? fontFamily,
     List<String>? fontFamilyFallback,
   }) {
     return TerminalStyle(
       fontSize: fontSize ?? this.fontSize,
       height: height ?? this.height,
+      fontWeight: fontWeight ?? this.fontWeight,
       fontFamily: fontFamily ?? this.fontFamily,
       fontFamilyFallback: fontFamilyFallback ?? this.fontFamilyFallback,
     );
