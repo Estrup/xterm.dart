@@ -141,11 +141,21 @@ class _TerminalGestureHandlerState extends State<TerminalGestureHandler> {
   }
 
   void onSecondaryTapDown(TapDownDetails details) {
-    _tapDown(widget.onSecondaryTapDown, details, TerminalMouseButton.right);
+    _tapDown(
+      widget.onSecondaryTapDown,
+      details,
+      TerminalMouseButton.right,
+      forceCallback: true,
+    );
   }
 
   void onSecondaryTapUp(TapUpDetails details) {
-    _tapUp(widget.onSecondaryTapUp, details, TerminalMouseButton.right);
+    _tapUp(
+      widget.onSecondaryTapUp,
+      details,
+      TerminalMouseButton.right,
+      forceCallback: true,
+    );
   }
 
   void onTertiaryTapDown(TapDownDetails details) {
