@@ -2,6 +2,94 @@ import 'package:test/test.dart';
 import 'package:xterm/core.dart';
 
 void main() {
+  group('Terminal SGR', () {
+    int attrsAt(Terminal terminal, int x) =>
+        terminal.buffer.lines[0].getAttributes(x);
+
+    test('ignores CSI m sequences with a private marker', () {
+      final terminal = Terminal();
+
+      // XTMODKEYS set/reset, as sent by the Claude CLI.
+      terminal.write('\x1b[>4;2mA\x1b[>4mB\x1b[?4mC');
+
+      expect(attrsAt(terminal, 0), 0);
+      expect(attrsAt(terminal, 1), 0);
+      expect(attrsAt(terminal, 2), 0);
+    });
+
+    test('22 clears both bold and faint', () {
+      final terminal = Terminal();
+
+      terminal.write('\x1b[1mA\x1b[22mB\x1b[2mC\x1b[22mD');
+
+      expect(attrsAt(terminal, 0), CellAttr.bold);
+      expect(attrsAt(terminal, 1), 0);
+      expect(attrsAt(terminal, 2), CellAttr.faint);
+      expect(attrsAt(terminal, 3), 0);
+    });
+  });
+
+  group('Terminal reported colors', () {
+    test('answers OSC 10/11 queries once colors are set', () {
+      final output = <String>[];
+      final terminal = Terminal(onOutput: output.add);
+
+      terminal.write('\x1b]11;?\x1b\\');
+      expect(output, isEmpty);
+
+      terminal.setReportedColors(foreground: 0x1c1b1a, background: 0xffffff);
+      terminal.write('\x1b]11;?\x07\x1b]10;?\x1b\\');
+
+      expect(output, [
+        '\x1b]11;rgb:ffff/ffff/ffff\x1b\\',
+        '\x1b]10;rgb:1c1c/1b1b/1a1a\x1b\\',
+      ]);
+    });
+
+    test('answers color scheme queries', () {
+      final output = <String>[];
+      final terminal = Terminal(onOutput: output.add);
+
+      terminal.setReportedColors(foreground: 0x000000, background: 0xffffff);
+      terminal.write('\x1b[?996n');
+      terminal.setReportedColors(foreground: 0xffffff, background: 0x1d1f24);
+      terminal.write('\x1b[?996n');
+
+      expect(output, ['\x1b[?997;2n', '\x1b[?997;1n']);
+    });
+
+    test('notifies scheme changes only when mode 2031 is on', () {
+      final output = <String>[];
+      final terminal = Terminal(onOutput: output.add);
+      terminal.setReportedColors(foreground: 0xffffff, background: 0x1d1f24);
+
+      terminal.setReportedColors(foreground: 0x000000, background: 0xffffff);
+      expect(output, isEmpty);
+
+      terminal.write('\x1b[?2031h');
+      // Same scheme, different color: no notification.
+      terminal.setReportedColors(foreground: 0x000000, background: 0xf5f5f5);
+      expect(output, isEmpty);
+
+      terminal.setReportedColors(foreground: 0xffffff, background: 0x1d1f24);
+      expect(output, ['\x1b[?997;1n']);
+
+      terminal.write('\x1b[?2031l');
+      terminal.setReportedColors(foreground: 0x000000, background: 0xffffff);
+      expect(output, ['\x1b[?997;1n']);
+    });
+
+    test('still passes color assignments to onPrivateOSC', () {
+      final private = <String>[];
+      final terminal = Terminal(onPrivateOSC: (code, _) => private.add(code));
+      terminal.setReportedColors(foreground: 0x000000, background: 0xffffff);
+
+      terminal.write('\x1b]11;#000000\x07');
+
+      expect(private, ['11']);
+    });
+  });
+
   group('Terminal.inputHandler', () {
     test('can be set to null', () {
       final terminal = Terminal(inputHandler: null);

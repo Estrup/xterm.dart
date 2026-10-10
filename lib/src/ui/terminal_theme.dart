@@ -25,6 +25,7 @@ class TerminalTheme {
     required this.searchHitBackground,
     required this.searchHitBackgroundCurrent,
     required this.searchHitForeground,
+    this.minimumContrast = 1,
   });
 
   final Color cursor;
@@ -54,4 +55,10 @@ class TerminalTheme {
   final Color searchHitBackground;
   final Color searchHitBackgroundCurrent;
   final Color searchHitForeground;
+
+  /// The lowest WCAG contrast ratio (1 to 21) allowed between text and the
+  /// background of its cell. Text below it is darkened or lightened until it
+  /// reaches it, so colors chosen for a different background stay readable.
+  /// 1, the default, leaves colors as they are.
+  final double minimumContrast;
 }

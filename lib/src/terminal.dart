@@ -147,6 +147,12 @@ class Terminal with Observable implements TerminalState, EscapeHandler {
 
   bool _bracketedPasteMode = false;
 
+  bool _colorSchemeUpdatesMode = false;
+
+  int? _reportedForeground;
+
+  int? _reportedBackground;
+
   /* State getters */
 
   /// Number of cells in a terminal row.
@@ -201,6 +207,41 @@ class Terminal with Observable implements TerminalState, EscapeHandler {
 
   @override
   bool get bracketedPasteMode => _bracketedPasteMode;
+
+  /// Whether the application asked to be told when the color scheme switches
+  /// between light and dark (mode 2031).
+  bool get colorSchemeUpdatesMode => _colorSchemeUpdatesMode;
+
+  /// The default foreground (0xRRGGBB) reported for OSC 10 queries. Null
+  /// leaves the query unanswered.
+  int? get reportedForeground => _reportedForeground;
+
+  /// The default background (0xRRGGBB) reported for OSC 11 queries, which also
+  /// decides the light/dark scheme reported for `CSI ? 996 n`. Null leaves
+  /// those queries unanswered.
+  int? get reportedBackground => _reportedBackground;
+
+  /// Whether [reportedBackground] is dark; null when it isn't set.
+  bool? get isDarkColorScheme {
+    final background = _reportedBackground;
+    if (background == null) return null;
+    final r = (background >> 16) & 0xFF;
+    final g = (background >> 8) & 0xFF;
+    final b = background & 0xFF;
+    return 299 * r + 587 * g + 114 * b < 128 * 1000;
+  }
+
+  /// Sets the colors reported to applications that query them, usually the
+  /// view's theme colors. When the background switches between light and
+  /// dark, an application that enabled mode 2031 is notified.
+  void setReportedColors({required int foreground, required int background}) {
+    final wasDark = isDarkColorScheme;
+    _reportedForeground = foreground & 0xFFFFFF;
+    _reportedBackground = background & 0xFFFFFF;
+    if (_colorSchemeUpdatesMode && wasDark != isDarkColorScheme) {
+      sendColorScheme();
+    }
+  }
 
   /// Current active buffer of the terminal. This is initially [mainBuffer] and
   /// can be switched back and forth from [altBuffer] to [mainBuffer] when
@@ -555,6 +596,13 @@ class Terminal with Observable implements TerminalState, EscapeHandler {
   }
 
   @override
+  void sendColorScheme() {
+    final dark = isDarkColorScheme;
+    if (dark == null) return;
+    onOutput?.call(_emitter.colorScheme(dark: dark));
+  }
+
+  @override
   void setMargins(int top, [int? bottom]) {
     _buffer.setVerticalMargins(top, bottom ?? viewHeight - 1);
   }
@@ -751,6 +799,11 @@ class Terminal with Observable implements TerminalState, EscapeHandler {
   }
 
   @override
+  void setColorSchemeUpdatesMode(bool enabled) {
+    _colorSchemeUpdatesMode = enabled;
+  }
+
+  @override
   void setUnknownDecMode(int mode, bool enabled) {
     // no-op
   }
@@ -897,6 +950,13 @@ class Terminal with Observable implements TerminalState, EscapeHandler {
   @override
   void setIconName(String name) {
     onIconChange?.call(name);
+  }
+
+  @override
+  void sendDefaultColor(int code) {
+    final rgb = code == 10 ? _reportedForeground : _reportedBackground;
+    if (rgb == null) return;
+    onOutput?.call(_emitter.defaultColor(code, rgb));
   }
 
   @override

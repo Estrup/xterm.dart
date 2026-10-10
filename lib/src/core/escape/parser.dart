@@ -408,6 +408,14 @@ class EscapeParser {
   ///
   /// https://terminalguide.namepad.de/seq/csi_sm/
   void _csiHandleSgr() {
+    // A private marker makes this a different sequence that shares the final
+    // byte, e.g. `CSI > 4 ; 2 m` (XTMODKEYS, sent by the Claude CLI). Treating
+    // it as SGR would turn on underline and faint/bold for all later text.
+    final prefix = _csi.prefix;
+    if (prefix != null && prefix >= Ascii.lessThan) {
+      return;
+    }
+
     final params = _csi.params;
 
     if (params.isEmpty) {
@@ -451,6 +459,8 @@ class EscapeParser {
           handler.unsetCursorBold();
           continue;
         case 22:
+          // Normal intensity: clears both bold and faint.
+          handler.unsetCursorBold();
           handler.unsetCursorFaint();
           continue;
         case 23:
@@ -630,6 +640,9 @@ class EscapeParser {
         return handler.sendOperatingStatus();
       case 6:
         return handler.sendCursorPosition();
+      // `CSI ? 996 n` asks whether the terminal is light or dark.
+      case 996 when _csi.prefix == Ascii.questionMark:
+        return handler.sendColorScheme();
     }
   }
 
@@ -1039,6 +1052,8 @@ class EscapeParser {
         return;
       case 2004:
         return handler.setBracketedPasteMode(enabled);
+      case 2031:
+        return handler.setColorSchemeUpdatesMode(enabled);
       default:
         return handler.setUnknownDecMode(mode, enabled);
     }
@@ -1071,6 +1086,9 @@ class EscapeParser {
           return true;
         case '2':
           handler.setTitle(pt);
+          return true;
+        case '10' || '11' when pt == '?':
+          handler.sendDefaultColor(int.parse(ps));
           return true;
       }
     }

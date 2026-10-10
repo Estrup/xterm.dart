@@ -246,6 +246,11 @@ class _TerminalDebuggerHandler implements EscapeHandler {
   }
 
   @override
+  void sendColorScheme() {
+    onCommand('sendColorScheme');
+  }
+
+  @override
   void setMargins(int i, [int? bottom]) {
     onCommand('setMargins($i, $bottom)');
   }
@@ -440,6 +445,11 @@ class _TerminalDebuggerHandler implements EscapeHandler {
   }
 
   @override
+  void setColorSchemeUpdatesMode(bool enabled) {
+    onCommand('setColorSchemeUpdatesMode($enabled)');
+  }
+
+  @override
   void setUnknownDecMode(int mode, bool enabled) {
     onCommand('setUnknownDecMode($mode, $enabled)', error: true);
   }
@@ -586,6 +596,11 @@ class _TerminalDebuggerHandler implements EscapeHandler {
   @override
   void setIconName(String name) {
     onCommand('setIconName($name)');
+  }
+
+  @override
+  void sendDefaultColor(int code) {
+    onCommand('sendDefaultColor($code)');
   }
 
   @override

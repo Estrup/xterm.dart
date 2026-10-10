@@ -1,3 +1,4 @@
+import 'dart:math' show max, min;
 import 'dart:ui';
 import 'package:flutter/painting.dart';
 
@@ -200,9 +201,13 @@ class TerminalPainter {
           ? resolveForegroundColor(foreground)
           : resolveBackgroundColor(cellData.background);
 
+      final background = resolveCellBackgroundColor(cellData);
       if (cellData.flags & CellFlags.faint != 0) {
-        color = color.withOpacity(0.5);
+        // Half way to the background: what 50% opacity would draw, but opaque
+        // so the contrast check below measures what is actually seen.
+        color = Color.lerp(background, color, 0.5)!;
       }
+      color = ensureContrast(color, background);
 
       final style = _textStyle.toTextStyle(
         color: color,
@@ -253,6 +258,47 @@ class TerminalPainter {
     final widthScale = doubleWidth ? 2 : 1;
     final size = Size(_cellSize.width * widthScale + 1, _cellSize.height);
     canvas.drawRect(offset & size, paint);
+  }
+
+  /// The color the background of [cellData] is drawn in, taking inverse into
+  /// account.
+  Color resolveCellBackgroundColor(CellData cellData) {
+    return cellData.flags & CellFlags.inverse != 0
+        ? resolveForegroundColor(cellData.foreground)
+        : resolveBackgroundColor(cellData.background);
+  }
+
+  /// Darkens or lightens [color] just enough to reach the theme's
+  /// [TerminalTheme.minimumContrast] against [background], moving towards
+  /// black or white, whichever contrasts more with [background].
+  Color ensureContrast(Color color, Color background) {
+    final minimum = _theme.minimumContrast;
+    if (minimum <= 1 || _contrast(color, background) >= minimum) return color;
+
+    const black = Color(0xFF000000);
+    const white = Color(0xFFFFFFFF);
+    final target = _contrast(black, background) >= _contrast(white, background)
+        ? black
+        : white;
+
+    // Smallest step towards the target that is readable enough.
+    var low = 0.0;
+    var high = 1.0;
+    for (var i = 0; i < 10; i++) {
+      final mid = (low + high) / 2;
+      if (_contrast(Color.lerp(color, target, mid)!, background) >= minimum) {
+        high = mid;
+      } else {
+        low = mid;
+      }
+    }
+    return Color.lerp(color, target, high)!;
+  }
+
+  static double _contrast(Color a, Color b) {
+    final la = a.computeLuminance();
+    final lb = b.computeLuminance();
+    return (max(la, lb) + 0.05) / (min(la, lb) + 0.05);
   }
 
   /// Get the effective foreground color for a cell from information encoded in

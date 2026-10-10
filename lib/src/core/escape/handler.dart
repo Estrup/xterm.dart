@@ -67,6 +67,8 @@ abstract class EscapeHandler {
 
   void sendCursorPosition();
 
+  void sendColorScheme();
+
   void setMargins(int i, [int? bottom]);
 
   void cursorNextLine(int amount);
@@ -145,6 +147,8 @@ abstract class EscapeHandler {
 
   void setBracketedPasteMode(bool enabled);
 
+  void setColorSchemeUpdatesMode(bool enabled);
+
   void setUnknownDecMode(int mode, bool enabled);
 
   void resize(int cols, int rows);
@@ -210,6 +214,9 @@ abstract class EscapeHandler {
   void setTitle(String name);
 
   void setIconName(String name);
+
+  /// Answers an OSC 10 (foreground) or OSC 11 (background) color query.
+  void sendDefaultColor(int code);
 
   void unknownOSC(String code, List<String> args);
 }
