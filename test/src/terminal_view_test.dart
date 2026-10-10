@@ -449,4 +449,84 @@ void main() {
       expect(terminalOutput.join(), isEmpty);
     });
   });
+
+  group('TerminalView mouse wheel reporting', () {
+    testWidgets('reports wheel events at the cell under the pointer',
+        (tester) async {
+      final terminalOutput = <String>[];
+      final terminal = Terminal(onOutput: terminalOutput.add);
+
+      // Offset the view so global and local coordinates differ.
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.only(left: 120, top: 60),
+            child: TerminalView(terminal, autofocus: true),
+          ),
+        ),
+      ));
+
+      // Alt screen with SGR mouse reporting, as full-screen TUIs request it.
+      terminal.write('\x1b[?1049h\x1b[?1000h\x1b[?1006h');
+      await tester.pump();
+
+      final view = tester.state<TerminalViewState>(find.byType(TerminalView));
+      final cellSize = view.renderTerminal.cellSize;
+      final location = const Offset(120, 60) +
+          Offset(cellSize.width * 10.5, cellSize.height * 4.5);
+
+      final pointer = TestPointer(1, PointerDeviceKind.mouse);
+      await tester.sendEventToBinding(pointer.hover(location));
+      await tester.sendEventToBinding(pointer.scroll(const Offset(0, 200)));
+      await tester.pump();
+
+      expect(terminalOutput, isNotEmpty);
+      expect(terminalOutput.toSet(), {'\x1b[<65;11;5M'});
+
+      terminalOutput.clear();
+      await tester.sendEventToBinding(pointer.scroll(const Offset(0, -200)));
+      await tester.pump();
+
+      expect(terminalOutput, isNotEmpty);
+      expect(terminalOutput.toSet(), {'\x1b[<64;11;5M'});
+    });
+
+    testWidgets('reports trackpad scrolls at the cell under the pointer',
+        (tester) async {
+      final terminalOutput = <String>[];
+      final terminal = Terminal(onOutput: terminalOutput.add);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.only(left: 120, top: 60),
+            child: TerminalView(terminal, autofocus: true),
+          ),
+        ),
+      ));
+
+      terminal.write('\x1b[?1049h\x1b[?1000h\x1b[?1006h');
+      await tester.pump();
+
+      final view = tester.state<TerminalViewState>(find.byType(TerminalView));
+      final cellSize = view.renderTerminal.cellSize;
+      final location = const Offset(120, 60) +
+          Offset(cellSize.width * 3.5, cellSize.height * 7.5);
+
+      // Two-finger swipe up: content moves up, i.e. scroll down.
+      final pointer = TestPointer(1, PointerDeviceKind.trackpad);
+      await tester.sendEventToBinding(pointer.panZoomStart(location));
+      for (var i = 1; i <= 10; i++) {
+        await tester.sendEventToBinding(
+          pointer.panZoomUpdate(location, pan: Offset(0, -20.0 * i)),
+        );
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await tester.sendEventToBinding(pointer.panZoomEnd());
+      await tester.pumpAndSettle();
+
+      expect(terminalOutput, isNotEmpty);
+      expect(terminalOutput.toSet(), {'\x1b[<65;4;8M'});
+    });
+  });
 }

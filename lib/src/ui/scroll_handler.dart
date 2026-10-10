@@ -18,7 +18,7 @@ class TerminalScrollGestureHandler extends StatefulWidget {
 
   final Terminal terminal;
 
-  /// Returns the cell offset for the pixel offset.
+  /// Returns the cell offset for the global pixel offset.
   final CellOffset Function(Offset) getCellOffset;
 
   /// Returns the pixel height of lines in the terminal.
@@ -46,8 +46,8 @@ class _TerminalScrollGestureHandlerState
   /// determine how many the scroll events should be sent to the terminal.
   var lastLineOffset = 0;
 
-  /// This variable tracks the last offset where the scroll gesture started.
-  /// Used to calculate the cell offset of the terminal mouse event.
+  /// This variable tracks the last global offset where the scroll gesture
+  /// started. Used to calculate the cell offset of the terminal mouse event.
   var lastPointerPosition = Offset.zero;
 
   @override
@@ -122,6 +122,13 @@ class _TerminalScrollGestureHandlerState
         lastPointerPosition = event.position;
       },
       onPointerDown: (event) {
+        lastPointerPosition = event.position;
+      },
+      onPointerHover: (event) {
+        lastPointerPosition = event.position;
+      },
+      // Trackpad scrolling arrives as pan/zoom events, not pointer signals.
+      onPointerPanZoomStart: (event) {
         lastPointerPosition = event.position;
       },
       child: InfiniteScrollView(
