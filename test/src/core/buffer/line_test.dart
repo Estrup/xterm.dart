@@ -39,6 +39,29 @@ void main() {
       terminal.write('Hello World');
       expect(terminal.buffer.lines[0].getText(5, 0), '');
     });
+
+    test('cells skipped by cursor movement are spaces', () {
+      final terminal = Terminal();
+      // Cursor Forward over the blanks, the way Claude Code draws text.
+      terminal.write('Begge\x1b[1Cbilleder\x1b[3Cviser\x1b[10C');
+      expect(terminal.buffer.lines[0].getText(), 'Begge billeder   viser');
+      expect(terminal.buffer.lines[0].getText(0, 8), 'Begge bi');
+      expect(terminal.buffer.lines[0].getText(5, 7), ' b');
+    });
+
+    test('erased cells inside the text are spaces', () {
+      final terminal = Terminal();
+      terminal.write('Hello World\x1b[6G\x1b[1X');
+      expect(terminal.buffer.lines[0].getText(), 'Hello World');
+    });
+
+    test('blank cells next to wide characters', () {
+      final terminal = Terminal();
+      terminal.write('😀\x1b[1Ca😁');
+      expect(terminal.buffer.lines[0].getText(), '😀 a😁');
+      // Starting on the second half of a wide character adds nothing.
+      expect(terminal.buffer.lines[0].getText(1), ' a😁');
+    });
   });
 
   group('BufferLine.getTrimmedLength()', () {

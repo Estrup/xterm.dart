@@ -331,12 +331,20 @@ class BufferLine with IndexedItem {
       to = _length;
     }
 
+    // Blank cells before the line's last content are spaces: TUIs such as
+    // Claude Code move the cursor over blanks instead of writing them, which
+    // leaves the cells empty. Blanks after the content are trimmed.
+    final contentEnd = min(to, getTrimmedLength(to));
+
     final builder = StringBuffer();
-    for (var i = from; i < to; i++) {
+    for (var i = from; i < contentEnd; i++) {
       final codePoint = getCodePoint(i);
       final width = getWidth(i);
-      if (codePoint != 0 && i + width <= to) {
-        builder.writeCharCode(codePoint);
+      if (codePoint != 0) {
+        if (i + width <= to) builder.writeCharCode(codePoint);
+      } else if (i == 0 || getWidth(i - 1) != 2) {
+        // An empty cell that isn't the second half of a wide character.
+        builder.writeCharCode(0x20);
       }
     }
 
