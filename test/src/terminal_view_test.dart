@@ -528,5 +528,36 @@ void main() {
       expect(terminalOutput, isNotEmpty);
       expect(terminalOutput.toSet(), {'\x1b[<65;4;8M'});
     });
+
+    testWidgets('keeps reporting wheel events after the scroll position is '
+        'replaced', (tester) async {
+      final terminalOutput = <String>[];
+      final terminal = Terminal(onOutput: terminalOutput.add);
+
+      // A MediaQuery change makes the Scrollable replace its ScrollPosition.
+      Widget app(double devicePixelRatio) => MaterialApp(
+            home: Builder(
+              builder: (context) => MediaQuery(
+                data: MediaQuery.of(context)
+                    .copyWith(devicePixelRatio: devicePixelRatio),
+                child: Scaffold(body: TerminalView(terminal, autofocus: true)),
+              ),
+            ),
+          );
+
+      await tester.pumpWidget(app(1));
+      terminal.write('\x1b[?1049h\x1b[?1000h\x1b[?1006h');
+      await tester.pump();
+
+      await tester.pumpWidget(app(2));
+      await tester.pump();
+
+      final pointer = TestPointer(1, PointerDeviceKind.mouse);
+      await tester.sendEventToBinding(pointer.hover(const Offset(50, 50)));
+      await tester.sendEventToBinding(pointer.scroll(const Offset(0, 200)));
+      await tester.pump();
+
+      expect(terminalOutput, isNotEmpty);
+    });
   });
 }
